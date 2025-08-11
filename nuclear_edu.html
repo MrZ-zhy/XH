@@ -153,7 +153,7 @@
     html { scroll-behavior: smooth; }
 
     /* 画布层：裂变与冷却剂流 */
-    #reactorCanvas, #coolantCanvas {
+    #atomicCanvas, #reactorCanvas, #coolantCanvas {
       position: absolute; inset: 0; width: 100%; height: 100%;
       display: block; pointer-events: none;
       filter: drop-shadow(0 0 12px rgba(59,209,255,0.2));
@@ -198,8 +198,7 @@
   <!-- 首页 Hero -->
   <section id="home" class="relative min-h-[92vh] flex items-center pt-20">
     <div class="absolute inset-0 -z-10">
-      <canvas id="coolantCanvas"></canvas>
-      <canvas id="reactorCanvas"></canvas>
+      <canvas id="atomicCanvas"></canvas>
     </div>
     <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 grid md:grid-cols-2 gap-10 items-center">
       <div class="reveal">
@@ -216,7 +215,7 @@
         <div class="mt-8 grid grid-cols-2 gap-4">
           <div class="tilt-card glass p-4 rounded-xl shadow-multi">
             <div class="text-sky-300 text-xl font-bold">实时动画</div>
-            <p class="text-sm text-slate-300 mt-2">粒子裂变、中子碰撞、冷却剂流动</p>
+            <p class="text-sm text-slate-300 mt-2">原子核与电子轨道</p>
           </div>
           <div class="tilt-card glass p-4 rounded-xl shadow-multi">
             <div class="text-emerald-300 text-xl font-bold">交互工具</div>
@@ -229,13 +228,13 @@
           <div class="flip-card-inner">
             <div class="flip-front flex flex-col justify-center items-center gap-3">
               <i class="fa-brands fa-react text-6xl text-aurora-400 animate-floaty"></i>
-              <h3 class="text-xl font-semibold">反应堆核心动画</h3>
-              <p class="text-sm text-slate-300">可视化中子诱发裂变、能量释放与热交换</p>
+              <h3 class="text-xl font-semibold">原子核模型</h3>
+              <p class="text-sm text-slate-300">核子与电子轨道的简洁可视化</p>
             </div>
             <div class="flip-back flex flex-col justify-center items-center gap-3">
-              <i class="fa-solid fa-fire-flame-curved text-6xl text-amber-300"></i>
-              <h3 class="text-xl font-semibold">冷却剂流动</h3>
-              <p class="text-sm text-slate-300">展示冷却剂带走热量、蒸汽产生的过程</p>
+              <i class="fa-solid fa-atom text-6xl text-amber-300"></i>
+              <h3 class="text-xl font-semibold">电子轨道</h3>
+              <p class="text-sm text-slate-300">展示多壳层电子的轨道运动</p>
             </div>
           </div>
         </div>
@@ -815,6 +814,103 @@
     loop() { if (!this.running) return; this.update(); this.draw(); requestAnimationFrame(this.loop); }
   }
 
+  // =============== 原子核模型动画（Canvas） ===============
+  class AtomicModelAnimation {
+    constructor(canvas) {
+      this.canvas = canvas; this.ctx = canvas.getContext('2d');
+      this.center = { x: 0, y: 0 };
+      this.nucleus = [];
+      this.shells = []; // [{r, electrons:[{angle, speed}]}]
+      this.running = true;
+      this.time = 0;
+      this.resize = this.resize.bind(this);
+      this.loop = this.loop.bind(this);
+      window.addEventListener('resize', debounce(this.resize, 200));
+      this.resize();
+      this.init();
+      requestAnimationFrame(this.loop);
+    }
+    resize() {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      this.canvas.width = this.canvas.clientWidth * dpr;
+      this.canvas.height = this.canvas.clientHeight * dpr;
+      this.ctx.setTransform(dpr,0,0,dpr,0,0);
+      this.center.x = this.canvas.clientWidth * 0.35;
+      this.center.y = this.canvas.clientHeight * 0.55;
+      const base = Math.min(this.canvas.clientWidth, this.canvas.clientHeight) * 0.08;
+      this.shellRadii = [base*1.4, base*2.1, base*2.8];
+    }
+    init() {
+      // 原子核（简化：随机排布的质子/中子）
+      const count = 12;
+      const rN = Math.min(this.canvas.clientWidth, this.canvas.clientHeight) * 0.07;
+      this.nucleus = [];
+      for (let i=0;i<count;i++){
+        const ang = Math.random()*Math.PI*2; const rad = rN * (Math.random()*0.6);
+        const x = this.center.x + Math.cos(ang)*rad;
+        const y = this.center.y + Math.sin(ang)*rad;
+        const isProton = Math.random() > 0.5;
+        this.nucleus.push({ x, y, r: 5 + Math.random()*3, proton: isProton, jitter: Math.random()*Math.PI*2 });
+      }
+      // 电子壳层
+      const electronsPerShell = [2, 6, 8];
+      this.shells = this.shellRadii.map((r, idx) => {
+        const n = electronsPerShell[idx] || 0; const electrons = [];
+        for (let i=0;i<n;i++){
+          electrons.push({ angle: Math.random()*Math.PI*2, speed: (0.006 + Math.random()*0.006) * (idx%2===0?1:-1) });
+        }
+        return { r, electrons };
+      });
+    }
+    update() {
+      this.time += 0.016;
+      this.shells.forEach((s, si) => {
+        s.electrons.forEach(e => { e.angle += e.speed; if (e.angle > Math.PI*2) e.angle -= Math.PI*2; if (e.angle < 0) e.angle += Math.PI*2; });
+      });
+      // 轻微热运动抖动
+      this.nucleus.forEach(p => { p.jitter += 0.08; });
+    }
+    draw() {
+      const ctx = this.ctx; const w = this.canvas.clientWidth; const h = this.canvas.clientHeight;
+      ctx.clearRect(0,0,w,h);
+
+      // 背景辉光
+      const glow = ctx.createRadialGradient(this.center.x, this.center.y, 8, this.center.x, this.center.y, this.shellRadii[2]*1.2);
+      glow.addColorStop(0, 'rgba(56,189,248,0.10)');
+      glow.addColorStop(1, 'rgba(2,6,23,0)');
+      ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(this.center.x, this.center.y, this.shellRadii[2]*1.25, 0, Math.PI*2); ctx.fill();
+
+      // 轨道
+      ctx.lineWidth = 1.2; ctx.strokeStyle = 'rgba(148,163,184,0.28)';
+      this.shells.forEach((s, si) => {
+        ctx.beginPath(); ctx.arc(this.center.x, this.center.y, s.r, 0, Math.PI*2); ctx.stroke();
+      });
+
+      // 电子
+      this.shells.forEach((s, si) => {
+        for (const e of s.electrons) {
+          const ex = this.center.x + Math.cos(e.angle) * s.r;
+          const ey = this.center.y + Math.sin(e.angle) * s.r;
+          ctx.fillStyle = 'rgba(125, 211, 252, 0.95)';
+          ctx.beginPath(); ctx.arc(ex, ey, 2.3, 0, Math.PI*2); ctx.fill();
+        }
+      });
+
+      // 原子核
+      for (const p of this.nucleus) {
+        const jx = Math.cos(p.jitter) * 0.5; const jy = Math.sin(p.jitter) * 0.5;
+        ctx.fillStyle = p.proton ? 'rgba(248,113,113,0.9)' : 'rgba(96,165,250,0.9)';
+        ctx.beginPath(); ctx.arc(p.x + jx, p.y + jy, p.r, 0, Math.PI*2); ctx.fill();
+      }
+
+      // 核心轮廓轻描
+      ctx.strokeStyle = 'rgba(30, 58, 138, 0.35)';
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(this.center.x, this.center.y, Math.min(this.canvas.clientWidth, this.canvas.clientHeight) * 0.075, 0, Math.PI*2); ctx.stroke();
+    }
+    loop() { if (!this.running) return; this.update(); this.draw(); requestAnimationFrame(this.loop); }
+  }
+
   // =============== FPS 监控 ===============
   function initFPSMeter() {
     const fpsEl = document.getElementById('fps');
@@ -1019,10 +1115,8 @@
     initReveal();
 
     const manager = new AnimationManager();
-    const coolant = new CoolantFlowAnimation(document.getElementById('coolantCanvas'));
-    const reactor = new ReactorCoreAnimation(document.getElementById('reactorCanvas'));
-    manager.register(coolant);
-    manager.register(reactor);
+    const atomic = new AtomicModelAnimation(document.getElementById('atomicCanvas'));
+    manager.register(atomic);
 
     initFPSMeter();
     initDoseChart();
