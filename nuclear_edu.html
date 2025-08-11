@@ -1,0 +1,1045 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>核工程技术科普 | Nuclear Tech Edu</title>
+
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            aurora: {
+              50: '#f2fbff',
+              100: '#dff7ff',
+              200: '#b9efff',
+              300: '#7ee3ff',
+              400: '#3bd1ff',
+              500: '#09b9ff',
+              600: '#0096db',
+              700: '#0076af',
+              800: '#065f8e',
+              900: '#0a4f75',
+            },
+          },
+          boxShadow: {
+            glass: '0 10px 30px rgba(0,0,0,0.25)',
+            deep: '0 20px 40px rgba(0,0,0,0.35)',
+          },
+          backdropBlur: {
+            xs: '2px',
+          },
+          keyframes: {
+            gradientFlow: {
+              '0%, 100%': { backgroundPosition: '0% 50%' },
+              '50%': { backgroundPosition: '100% 50%' },
+            },
+            floaty: {
+              '0%, 100%': { transform: 'translate3d(0, 0, 0)' },
+              '50%': { transform: 'translate3d(0, -10px, 0)' },
+            },
+            fadeUp: {
+              '0%': { opacity: 0, transform: 'translate3d(0, 20px, 0)' },
+              '100%': { opacity: 1, transform: 'translate3d(0, 0, 0)' },
+            },
+          },
+          animation: {
+            gradientFlow: 'gradientFlow 15s ease infinite',
+            floaty: 'floaty 4s ease-in-out infinite',
+            fadeUp: 'fadeUp 0.8s ease forwards',
+          },
+        },
+      },
+    };
+  </script>
+
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkfK0bT8F2LqI5S7G4nuV+Bn5H1xQ6Q2QwVtWm7Yx1Y8Y9Z4n4M9gFQ1g==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    /* 背景渐变与视差层 */
+    body {
+      background: linear-gradient(120deg, #0f172a, #0b2946, #0a3a5a, #0b2946);
+      background-size: 400% 400%;
+      animation: gradientFlow 30s ease infinite;
+      color: #e5e7eb;
+      overflow-x: hidden;
+    }
+    .glass {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+    .glass-strong {
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+    }
+    .parallax-layer {
+      position: absolute;
+      inset: 0;
+      will-change: transform;
+      pointer-events: none;
+    }
+    /* 3D 卡片 */
+    .tilt-card {
+      transform-style: preserve-3d;
+      transform: perspective(900px) rotateX(0) rotateY(0) translateZ(0);
+      transition: transform 300ms ease, box-shadow 300ms ease;
+      will-change: transform;
+    }
+    .tilt-card:hover {
+      transform: perspective(900px) rotateX(4deg) rotateY(-6deg) translateZ(10px);
+      box-shadow: 0 30px 80px rgba(0,0,0,0.45);
+    }
+    .flip-card {
+      perspective: 1200px;
+    }
+    .flip-card-inner {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      transform-style: preserve-3d;
+      transition: transform 600ms cubic-bezier(0.2, 0.8, 0.2, 1);
+      will-change: transform;
+    }
+    .flip-card:hover .flip-card-inner {
+      transform: rotateY(180deg);
+    }
+    .flip-front, .flip-back {
+      position: absolute;
+      inset: 0;
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+    }
+    .flip-back {
+      transform: rotateY(180deg);
+    }
+
+    /* 进入视口动画 */
+    .reveal { opacity: 0; transform: translate3d(0, 24px, 0); }
+    .reveal.revealed { opacity: 1; transform: translate3d(0, 0, 0); transition: opacity 700ms ease, transform 700ms ease; }
+
+    /* 导航激活与滚动条 */
+    .active-link { color: #60a5fa; }
+    #scrollProgress { position: fixed; top: 0; left: 0; height: 3px; background: linear-gradient(90deg, #38bdf8, #22c55e, #eab308); width: 0; z-index: 9999; box-shadow: 0 0 12px rgba(56,189,248,0.7); }
+
+    /* 按钮微交互 */
+    .btn {
+      position: relative;
+      overflow: hidden;
+      transform: translateZ(0);
+      transition: transform 120ms ease;
+      will-change: transform;
+    }
+    .btn:active { transform: scale(0.98); }
+    .btn::after {
+      content: '';
+      position: absolute; inset: 0;
+      background: radial-gradient(circle at var(--x, 50%) var(--y, 50%), rgba(255,255,255,0.25), transparent 40%);
+      opacity: 0; transition: opacity 300ms ease;
+    }
+    .btn:hover::after { opacity: 1; }
+
+    /* 页面切换过渡（锚点滚动时） */
+    html { scroll-behavior: smooth; }
+
+    /* 画布层：裂变与冷却剂流 */
+    #reactorCanvas, #coolantCanvas {
+      position: absolute; inset: 0; width: 100%; height: 100%;
+      display: block; pointer-events: none;
+      filter: drop-shadow(0 0 12px rgba(59,209,255,0.2));
+    }
+
+    /* FPS 性能监控 */
+    #fpsMeter { position: fixed; right: 12px; bottom: 12px; z-index: 10000; }
+
+    /* 细节微调 */
+    .shadow-multi { box-shadow: 0 10px 25px rgba(0,0,0,0.25), inset 0 0 20px rgba(255,255,255,0.06); }
+    .gradient-text { background: linear-gradient(90deg, #7dd3fc, #a7f3d0, #fde68a); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  </style>
+</head>
+
+<body class="antialiased selection:bg-sky-300/20">
+  <!-- 视差背景层 -->
+  <div class="parallax-layer" id="parallaxStars" aria-hidden="true"></div>
+  <div class="parallax-layer" id="parallaxGrid" aria-hidden="true"></div>
+
+  <!-- 滚动进度条 -->
+  <div id="scrollProgress"></div>
+
+  <!-- 顶部导航 -->
+  <header class="fixed top-0 left-0 right-0 z-50 glass shadow-glass">
+    <nav class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
+      <div class="flex items-center gap-3">
+        <i class="fa-solid fa-atom text-aurora-400 text-2xl"></i>
+        <span class="font-semibold tracking-wide">核工程技术科普</span>
+      </div>
+      <ul class="hidden md:flex gap-6 text-sm">
+        <li><a href="#home" class="hover:text-sky-300 nav-link">首页</a></li>
+        <li><a href="#types" class="hover:text-sky-300 nav-link">堆型科普</a></li>
+        <li><a href="#principles" class="hover:text-sky-300 nav-link">技术原理</a></li>
+        <li><a href="#tools" class="hover:text-sky-300 nav-link">实用工具</a></li>
+        <li><a href="#safety" class="hover:text-sky-300 nav-link">核安全</a></li>
+        <li><a href="#faq" class="hover:text-sky-300 nav-link">常见问题</a></li>
+      </ul>
+      <a href="#tools" class="btn px-3 py-1.5 rounded-md bg-aurora-600 hover:bg-aurora-500 transition text-sm">工具</a>
+    </nav>
+  </header>
+
+  <!-- 首页 Hero -->
+  <section id="home" class="relative min-h-[92vh] flex items-center pt-20">
+    <div class="absolute inset-0 -z-10">
+      <canvas id="coolantCanvas"></canvas>
+      <canvas id="reactorCanvas"></canvas>
+    </div>
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 grid md:grid-cols-2 gap-10 items-center">
+      <div class="reveal">
+        <h1 class="text-4xl sm:text-5xl font-extrabold leading-tight">
+          用可视化理解核能
+          <span class="block gradient-text">反应堆核心与安全工程</span>
+        </h1>
+        <p class="mt-4 text-slate-300 max-w-prose">通过交互动画和实用工具，系统学习核反应、堆型特点、辐射与安全评估。无需安装，打开即用。</p>
+        <div class="mt-6 flex flex-wrap gap-3">
+          <a href="#principles" class="btn px-4 py-2 rounded-md bg-sky-600 hover:bg-sky-500">技术原理</a>
+          <a href="#tools" class="btn px-4 py-2 rounded-md bg-emerald-600 hover:bg-emerald-500">开始计算</a>
+          <a href="#safety" class="btn px-4 py-2 rounded-md bg-amber-600 hover:bg-amber-500">核安全</a>
+        </div>
+        <div class="mt-8 grid grid-cols-2 gap-4">
+          <div class="tilt-card glass p-4 rounded-xl shadow-multi">
+            <div class="text-sky-300 text-xl font-bold">实时动画</div>
+            <p class="text-sm text-slate-300 mt-2">粒子裂变、中子碰撞、冷却剂流动</p>
+          </div>
+          <div class="tilt-card glass p-4 rounded-xl shadow-multi">
+            <div class="text-emerald-300 text-xl font-bold">交互工具</div>
+            <p class="text-sm text-slate-300 mt-2">辐射/富集度/衰变/安全评估</p>
+          </div>
+        </div>
+      </div>
+      <div class="reveal">
+        <div class="flip-card h-[360px] glass-strong rounded-2xl shadow-deep p-6">
+          <div class="flip-card-inner">
+            <div class="flip-front flex flex-col justify-center items-center gap-3">
+              <i class="fa-brands fa-react text-6xl text-aurora-400 animate-floaty"></i>
+              <h3 class="text-xl font-semibold">反应堆核心动画</h3>
+              <p class="text-sm text-slate-300">可视化中子诱发裂变、能量释放与热交换</p>
+            </div>
+            <div class="flip-back flex flex-col justify-center items-center gap-3">
+              <i class="fa-solid fa-fire-flame-curved text-6xl text-amber-300"></i>
+              <h3 class="text-xl font-semibold">冷却剂流动</h3>
+              <p class="text-sm text-slate-300">展示冷却剂带走热量、蒸汽产生的过程</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 堆型科普 -->
+  <section id="types" class="py-24 relative">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <h2 class="text-3xl font-bold mb-6">堆型科普</h2>
+      <p class="text-slate-300 mb-8">涵盖主流商用堆型与先进堆型的关键特征与应用场景。</p>
+
+      <div class="grid lg:grid-cols-2 gap-8">
+        <div class="glass rounded-2xl p-6 reveal">
+          <h3 class="text-2xl font-semibold mb-4">商用堆型</h3>
+          <ul class="space-y-4 text-sm">
+            <li class="flex items-start gap-3"><i class="fa-solid fa-water text-sky-300 mt-1"></i><div><b>压水堆（PWR）</b>：使用高压水作冷却剂与慢化剂，安全成熟、占比最高。</div></li>
+            <li class="flex items-start gap-3"><i class="fa-solid fa-water text-sky-300 mt-1"></i><div><b>沸水堆（BWR）</b>：堆芯内直接沸腾产生蒸汽驱动汽轮机，系统较简化。</div></li>
+            <li class="flex items-start gap-3"><i class="fa-solid fa-droplet text-sky-300 mt-1"></i><div><b>重水堆（PHWR/CANDU）</b>：以重水为慢化剂和冷却剂，可使用天然铀。</div></li>
+            <li class="flex items-start gap-3"><i class="fa-solid fa-wind text-sky-300 mt-1"></i><div><b>石墨气冷堆（GCR/AGR）</b>：石墨慢化，二氧化碳或氦气冷却，燃料通量高。</div></li>
+          </ul>
+        </div>
+        <div class="glass rounded-2xl p-6 reveal">
+          <h3 class="text-2xl font-semibold mb-4">先进堆型（Gen IV）</h3>
+          <ul class="space-y-4 text-sm">
+            <li class="flex items-start gap-3"><i class="fa-solid fa-temperature-high text-emerald-300 mt-1"></i><div><b>高温气冷堆（HTGR）</b>：球床或柱状燃料，氦气冷却，高温制氢潜力。</div></li>
+            <li class="flex items-start gap-3"><i class="fa-solid fa-water text-emerald-300 mt-1"></i><div><b>钠冷快堆（SFR）</b>：液态钠冷却，快中子谱，增殖能力。</div></li>
+            <li class="flex items-start gap-3"><i class="fa-solid fa-flask text-emerald-300 mt-1"></i><div><b>熔盐堆（MSR）</b>：燃料溶解于熔盐中，低压运行，安全特性好。</div></li>
+            <li class="flex items-start gap-3"><i class="fa-solid fa-water text-emerald-300 mt-1"></i><div><b>超临界水冷堆（SCWR）</b>：高热效率，系统简化。</div></li>
+            <li class="flex items-start gap-3"><i class="fa-solid fa-sun text-emerald-300 mt-1"></i><div><b>超高温气冷堆（VHTR）</b>：极高出口温度，材料与燃料技术挑战大。</div></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 技术原理 -->
+  <section id="principles" class="py-24 relative">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <h2 class="text-3xl font-bold mb-8">技术原理</h2>
+      <div class="grid lg:grid-cols-2 gap-8">
+        <div class="glass rounded-2xl p-6 reveal">
+          <h3 class="text-xl font-semibold mb-3">核反应原理</h3>
+          <p class="text-sm text-slate-300">热中子诱发裂变产生裂变碎片与中子，释放巨大能量；快堆使用快中子维持反应。临界控制通过吸收棒与慢化控制实现。</p>
+          <h3 class="text-xl font-semibold mt-6 mb-3">反应堆结构</h3>
+          <p class="text-sm text-slate-300">主要包括堆芯（燃料组件、控制棒、慢化剂）、压力容器、冷却剂回路、蒸汽发生器、屏蔽层与安全壳等。</p>
+          <h3 class="text-xl font-semibold mt-6 mb-3">核反应堆安全</h3>
+          <p class="text-sm text-slate-300">基于“防御深度”原则：多重物理屏障、冗余与多样化安全系统、事故管理与严重事故缓解措施。</p>
+        </div>
+        <div class="glass rounded-2xl p-6 reveal">
+          <h3 class="text-xl font-semibold mb-3">反应堆工作原理图</h3>
+          <div class="relative h-72 rounded-xl bg-slate-900/40 overflow-hidden">
+            <svg viewBox="0 0 600 300" class="w-full h-full">
+              <defs>
+                <linearGradient id="coolant" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#38bdf8"/>
+                  <stop offset="100%" stop-color="#0ea5e9"/>
+                </linearGradient>
+                <linearGradient id="steam" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#eab308"/>
+                  <stop offset="100%" stop-color="#f59e0b"/>
+                </linearGradient>
+              </defs>
+              <!-- Reactor -->
+              <rect x="60" y="60" width="120" height="180" rx="16" fill="#1f2937" stroke="#38bdf8" stroke-width="2"></rect>
+              <circle cx="120" cy="150" r="38" fill="#0b2946" stroke="#7dd3fc"></circle>
+              <text x="120" y="155" text-anchor="middle" fill="#93c5fd" font-size="12">堆芯</text>
+
+              <!-- Steam Generator -->
+              <rect x="250" y="60" width="120" height="180" rx="16" fill="#1f2937" stroke="#f59e0b" stroke-width="2"></rect>
+              <text x="310" y="155" text-anchor="middle" fill="#fde68a" font-size="12">蒸汽发生器</text>
+
+              <!-- Turbine -->
+              <rect x="430" y="100" width="120" height="100" rx="16" fill="#1f2937" stroke="#86efac" stroke-width="2"></rect>
+              <text x="490" y="155" text-anchor="middle" fill="#a7f3d0" font-size="12">汽轮机</text>
+
+              <!-- Coolant loop -->
+              <path d="M180 90 C220 90 220 90 250 90" stroke="url(#coolant)" stroke-width="6" fill="none"></path>
+              <path d="M250 210 C220 210 220 210 180 210" stroke="url(#coolant)" stroke-width="6" fill="none"></path>
+              <path d="M370 90 C410 90 410 130 430 130" stroke="url(#steam)" stroke-width="6" fill="none"></path>
+              <path d="M430 170 C410 170 410 210 370 210" stroke="url(#steam)" stroke-width="6" fill="none"></path>
+            </svg>
+          </div>
+          <p class="text-xs text-slate-400 mt-3">示意：一回路冷却剂带走堆芯热量至蒸汽发生器；二回路蒸汽驱动汽轮发电。</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 实用工具 -->
+  <section id="tools" class="py-24 relative">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <h2 class="text-3xl font-bold mb-8">实用工具</h2>
+
+      <div class="grid xl:grid-cols-2 gap-8">
+        <!-- 辐射计算器 -->
+        <div class="glass rounded-2xl p-6 reveal">
+          <h3 class="text-xl font-semibold mb-3 flex items-center gap-2"><i class="fa-solid fa-radiation text-amber-400"></i> 辐射计算器</h3>
+          <p class="text-sm text-slate-300 mb-4">支持 α/β/γ/中子。输入剂量率与时长，计算吸收剂量估计（Gy）与当量剂量（Sv）。</p>
+          <div class="grid sm:grid-cols-2 gap-4">
+            <label class="text-sm">辐射类型
+              <select id="radType" class="mt-1 w-full glass p-2 rounded-md">
+                <option value="gamma">γ（权重1）</option>
+                <option value="beta">β（权重1）</option>
+                <option value="alpha">α（权重20）</option>
+                <option value="neutron">中子（权重10）</option>
+              </select>
+            </label>
+            <label class="text-sm">剂量率（μSv/h）
+              <input id="doseRate" type="number" min="0" step="0.01" class="mt-1 w-full glass p-2 rounded-md" placeholder="例如 50" />
+            </label>
+            <label class="text-sm">时长（小时）
+              <input id="hours" type="number" min="0" step="0.01" class="mt-1 w-full glass p-2 rounded-md" placeholder="例如 2" />
+            </label>
+            <label class="text-sm">体重（kg，可选）
+              <input id="bodyMass" type="number" min="0" step="0.1" class="mt-1 w-full glass p-2 rounded-md" placeholder="用于粗略吸收估计" />
+            </label>
+          </div>
+          <div class="mt-4 flex gap-3">
+            <button id="calcDoseBtn" class="btn px-4 py-2 rounded-md bg-sky-600 hover:bg-sky-500">计算</button>
+            <span id="doseError" class="text-rose-400 text-sm"></span>
+          </div>
+          <div class="mt-4 text-sm space-y-1">
+            <div>当量剂量：<span id="equivalentSv" class="text-amber-300 font-semibold">-</span> Sv</div>
+            <div>吸收剂量：<span id="absorbedGy" class="text-emerald-300 font-semibold">-</span> Gy</div>
+          </div>
+        </div>
+
+        <!-- 富集度计算器 -->
+        <div class="glass rounded-2xl p-6 reveal">
+          <h3 class="text-xl font-semibold mb-3 flex items-center gap-2"><i class="fa-solid fa-vial text-sky-300"></i> 富集度计算器</h3>
+          <p class="text-sm text-slate-300 mb-4">支持 γ 能谱法、质谱法、ICP-MS。结果为 U-235 的原子丰度（%）。</p>
+
+          <div class="flex gap-2 text-xs mb-3">
+            <button class="btn px-3 py-1.5 rounded bg-sky-700 hover:bg-sky-600" data-enrich-tab="gamma">γ 能谱法</button>
+            <button class="btn px-3 py-1.5 rounded bg-slate-700 hover:bg-slate-600" data-enrich-tab="ms">质谱法</button>
+            <button class="btn px-3 py-1.5 rounded bg-slate-700 hover:bg-slate-600" data-enrich-tab="icp">ICP-MS</button>
+          </div>
+
+          <div id="enrich-gamma" class="space-y-3">
+            <div class="grid sm:grid-cols-3 gap-3 text-sm">
+              <label>峰比 R（186 keV/1001 keV 或校准峰比）<input id="gammaR" type="number" step="0.0001" class="mt-1 w-full glass p-2 rounded-md" placeholder="0.12"/></label>
+              <label>校准系数 a<input id="gammaA" type="number" step="0.0001" class="mt-1 w-full glass p-2 rounded-md" value="50"/></label>
+              <label>截距 b<input id="gammaB" type="number" step="0.0001" class="mt-1 w-full glass p-2 rounded-md" value="0"/></label>
+            </div>
+            <button id="calcGammaEnrich" class="btn px-4 py-2 rounded-md bg-sky-600 hover:bg-sky-500">计算</button>
+            <div class="text-sm">富集度：<span id="gammaResult" class="text-emerald-300 font-semibold">-</span> %</div>
+          </div>
+
+          <div id="enrich-ms" class="space-y-3 hidden">
+            <div class="grid sm:grid-cols-2 gap-3 text-sm">
+              <label>U-235 原子数或浓度<input id="msU235" type="number" step="0.0001" class="mt-1 w-full glass p-2 rounded-md"/></label>
+              <label>U-238 原子数或浓度<input id="msU238" type="number" step="0.0001" class="mt-1 w-full glass p-2 rounded-md"/></label>
+            </div>
+            <button id="calcMsEnrich" class="btn px-4 py-2 rounded-md bg-sky-600 hover:bg-sky-500">计算</button>
+            <div class="text-sm">富集度：<span id="msResult" class="text-emerald-300 font-semibold">-</span> %</div>
+          </div>
+
+          <div id="enrich-icp" class="space-y-3 hidden">
+            <div class="grid sm:grid-cols-2 gap-3 text-sm">
+              <label>U-235（μg/L 或任意单位）<input id="icpU235" type="number" step="0.0001" class="mt-1 w-full glass p-2 rounded-md"/></label>
+              <label>U-238（μg/L 或任意单位）<input id="icpU238" type="number" step="0.0001" class="mt-1 w-full glass p-2 rounded-md"/></label>
+            </div>
+            <button id="calcIcpEnrich" class="btn px-4 py-2 rounded-md bg-sky-600 hover:bg-sky-500">计算</button>
+            <div class="text-sm">富集度：<span id="icpResult" class="text-emerald-300 font-semibold">-</span> %</div>
+          </div>
+        </div>
+
+        <!-- 衰变工具 -->
+        <div class="glass rounded-2xl p-6 reveal">
+          <h3 class="text-xl font-semibold mb-3 flex items-center gap-2"><i class="fa-solid fa-hourglass-half text-amber-300"></i> 衰变工具</h3>
+          <div class="grid sm:grid-cols-2 gap-4 text-sm">
+            <label>核素
+              <select id="nuclide" class="mt-1 w-full glass p-2 rounded-md">
+                <option value="U-235">铀-235</option>
+                <option value="U-238">铀-238</option>
+                <option value="Pu-239">钚-239</option>
+                <option value="I-131">碘-131</option>
+                <option value="Cs-137">铯-137</option>
+              </select>
+            </label>
+            <label>初始量 N0（任意单位）
+              <input id="n0" type="number" step="0.0001" class="mt-1 w-full glass p-2 rounded-md" value="100"/>
+            </label>
+            <label>时间 t
+              <input id="timeValue" type="number" step="0.0001" class="mt-1 w-full glass p-2 rounded-md" value="10"/>
+            </label>
+            <label>单位
+              <select id="timeUnit" class="mt-1 w-full glass p-2 rounded-md">
+                <option value="y">年</option>
+                <option value="d">日</option>
+                <option value="h">小时</option>
+              </select>
+            </label>
+          </div>
+          <div class="mt-4 flex gap-3">
+            <button id="calcDecay" class="btn px-4 py-2 rounded-md bg-sky-600 hover:bg-sky-500">计算</button>
+            <button id="plotDecay" class="btn px-4 py-2 rounded-md bg-emerald-600 hover:bg-emerald-500">绘制曲线</button>
+          </div>
+          <div class="mt-3 text-sm">剩余量 N(t)：<span id="nt" class="text-amber-300 font-semibold">-</span></div>
+          <div class="mt-3">
+            <canvas id="decayChart" class="w-full h-48"></canvas>
+          </div>
+        </div>
+
+        <!-- 安全评估表 -->
+        <div class="glass rounded-2xl p-6 reveal">
+          <h3 class="text-xl font-semibold mb-3 flex items-center gap-2"><i class="fa-solid fa-shield-halved text-emerald-300"></i> 安全评估表</h3>
+          <p class="text-sm text-slate-300 mb-3">评估风险：反应堆失控、冷却剂丧失、放射性泄漏。评分 1-5（概率×后果）。</p>
+          <div class="overflow-auto">
+            <table class="min-w-full text-sm">
+              <thead class="text-slate-300">
+                <tr>
+                  <th class="text-left p-2">事件</th>
+                  <th class="text-left p-2">概率</th>
+                  <th class="text-left p-2">后果</th>
+                  <th class="text-left p-2">风险值</th>
+                </tr>
+              </thead>
+              <tbody id="riskBody"></tbody>
+            </table>
+          </div>
+          <div class="mt-3 text-sm">总风险：<span id="totalRisk" class="font-semibold">-</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 核安全 -->
+  <section id="safety" class="py-24 relative">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <h2 class="text-3xl font-bold mb-8">核安全</h2>
+      <div class="grid lg:grid-cols-2 gap-8">
+        <div class="glass rounded-2xl p-6 reveal">
+          <h3 class="text-xl font-semibold mb-3">辐射剂量对比（对数刻度）</h3>
+          <canvas id="doseChart" class="w-full h-64"></canvas>
+          <p class="text-xs text-slate-400 mt-2">注：不同来源剂量差异巨大，采用对数坐标以便比较。</p>
+        </div>
+        <div class="space-y-6 reveal">
+          <div class="glass rounded-2xl p-6">
+            <h3 class="text-xl font-semibold mb-3">核安全原则</h3>
+            <ul class="list-disc list-inside text-sm text-slate-300 space-y-1">
+              <li>防御深度：多重屏障、冗余与多样化。</li>
+              <li>固有安全：被动余热移除、负温度系数设计。</li>
+              <li>运行管理：文化与程序、培训与演练。</li>
+            </ul>
+          </div>
+          <div class="glass rounded-2xl p-6">
+            <h3 class="text-xl font-semibold mb-3">辐射防护措施</h3>
+            <ul class="list-disc list-inside text-sm text-slate-300 space-y-1">
+              <li>时间-距离-屏蔽原理。</li>
+              <li>个人剂量监测与分区管制。</li>
+              <li>应急响应与碘化钾服用策略。</li>
+            </ul>
+          </div>
+          <div class="glass rounded-2xl p-6">
+            <h3 class="text-xl font-semibold mb-3">核事故案例</h3>
+            <ul class="text-sm text-slate-300 space-y-2">
+              <li><b>切尔诺贝利（1986）</b>：设计缺陷+操作失误，堆芯爆炸与燃烧，长期环境影响。</li>
+              <li><b>福岛（2011）</b>：海啸致失电与冷却失效，燃料损坏与氢爆，强化应急电源与防洪。</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 常见问题 -->
+  <section id="faq" class="py-24 relative">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <h2 class="text-3xl font-bold mb-8">常见问题</h2>
+      <div class="grid lg:grid-cols-2 gap-6">
+        <details class="glass rounded-xl p-4 reveal"><summary class="cursor-pointer font-semibold">核能清洁性</summary><p class="mt-2 text-sm text-slate-300">生命周期碳排低，与风光相当；但需妥善处理放射性废物。</p></details>
+        <details class="glass rounded-xl p-4 reveal"><summary class="cursor-pointer font-semibold">核电站安全性</summary><p class="mt-2 text-sm text-slate-300">现代堆型强调被动安全与冗余设计，风险可控。</p></details>
+        <details class="glass rounded-xl p-4 reveal"><summary class="cursor-pointer font-semibold">核废料处理</summary><p class="mt-2 text-sm text-slate-300">乏燃料后处理、玻璃固化、深地质处置等多重方案。</p></details>
+        <details class="glass rounded-xl p-4 reveal"><summary class="cursor-pointer font-semibold">经济性</summary><p class="mt-2 text-sm text-slate-300">高初始投资，长周期稳定供电，平准化成本具竞争力。</p></details>
+        <details class="glass rounded-xl p-4 reveal"><summary class="cursor-pointer font-semibold">第四代反应堆优势</summary><p class="mt-2 text-sm text-slate-300">燃料利用率高、闭式循环、被动安全与高效率。</p></details>
+      </div>
+    </div>
+  </section>
+
+  <!-- 页脚 -->
+  <footer class="py-10 text-center text-xs text-slate-400">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div>© 2025 核工程技术科普 | 本页为教育用途示意，计算结果仅供参考。</div>
+    </div>
+  </footer>
+
+  <!-- 回到顶部按钮 -->
+  <button id="backToTop" class="fixed bottom-6 right-6 hidden btn w-11 h-11 rounded-full bg-sky-700 hover:bg-sky-600 shadow-deep"><i class="fa-solid fa-arrow-up"></i></button>
+
+  <!-- FPS 性能监控 -->
+  <div id="fpsMeter" class="glass rounded-md px-2 py-1 text-xs text-slate-300">FPS: <span id="fps">-</span></div>
+
+  <script>
+  // =============== 工具函数与防抖/节流 ===============
+  const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+  const lerp = (a, b, t) => a + (b - a) * t;
+  function debounce(fn, delay = 150) { let t; return (...args) => { clearTimeout(t); t = setTimeout(() => fn.apply(null, args), delay); }; }
+  function throttleRAF(fn) { let ticking = false; return (...args) => { if (ticking) return; ticking = true; requestAnimationFrame(() => { fn.apply(null, args); ticking = false; }); }; }
+
+  // =============== 视差背景 ===============
+  const starsLayer = document.getElementById('parallaxStars');
+  const gridLayer = document.getElementById('parallaxGrid');
+  function initParallax() {
+    // 星点
+    const starCanvas = document.createElement('canvas');
+    const sctx = starCanvas.getContext('2d');
+    function resizeStarCanvas() {
+      starCanvas.width = window.innerWidth;
+      starCanvas.height = window.innerHeight * 1.2;
+      drawStars();
+    }
+    function drawStars() {
+      sctx.clearRect(0,0,starCanvas.width, starCanvas.height);
+      for (let i=0; i<160; i++) {
+        const x = Math.random() * starCanvas.width;
+        const y = Math.random() * starCanvas.height;
+        const r = Math.random() * 1.4 + 0.2;
+        sctx.fillStyle = `rgba(125, 211, 252, ${Math.random()*0.8})`;
+        sctx.beginPath(); sctx.arc(x, y, r, 0, Math.PI*2); sctx.fill();
+      }
+    }
+    window.addEventListener('resize', debounce(resizeStarCanvas, 200));
+    resizeStarCanvas();
+    starsLayer.appendChild(starCanvas);
+
+    // 网格
+    const gridCanvas = document.createElement('canvas');
+    const gctx = gridCanvas.getContext('2d');
+    function resizeGrid() {
+      gridCanvas.width = window.innerWidth;
+      gridCanvas.height = window.innerHeight * 1.2;
+      drawGrid();
+    }
+    function drawGrid() {
+      gctx.clearRect(0,0,gridCanvas.width, gridCanvas.height);
+      gctx.strokeStyle = 'rgba(148, 163, 184, 0.08)';
+      gctx.lineWidth = 1;
+      const gap = 50;
+      for (let x=0; x<gridCanvas.width; x+=gap) { gctx.beginPath(); gctx.moveTo(x,0); gctx.lineTo(x, gridCanvas.height); gctx.stroke(); }
+      for (let y=0; y<gridCanvas.height; y+=gap) { gctx.beginPath(); gctx.moveTo(0,y); gctx.lineTo(gridCanvas.width, y); gctx.stroke(); }
+    }
+    window.addEventListener('resize', debounce(resizeGrid, 200));
+    resizeGrid();
+    gridLayer.appendChild(gridCanvas);
+
+    // 视差移动
+    const handleScroll = throttleRAF(() => {
+      const y = window.scrollY || document.documentElement.scrollTop;
+      starsLayer.style.transform = `translate3d(0, ${y * 0.15}px, 0)`;
+      gridLayer.style.transform = `translate3d(0, ${y * 0.05}px, 0)`;
+    });
+    window.addEventListener('scroll', handleScroll, { passive: true });
+  }
+
+  // =============== 导航高亮与滚动进度 ===============
+  const navLinks = Array.from(document.querySelectorAll('.nav-link'));
+  const sections = ['home','types','principles','tools','safety','faq'].map(id => document.getElementById(id));
+  function initScrollSpy() {
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        const id = entry.target.id;
+        const link = navLinks.find(a => a.getAttribute('href') === `#${id}`);
+        if (!link) return;
+        if (entry.isIntersecting) {
+          navLinks.forEach(a => a.classList.remove('active-link'));
+          link.classList.add('active-link');
+        }
+      })
+    }, { root: null, rootMargin: '-30% 0px -60% 0px', threshold: 0.1 });
+    sections.forEach(sec => observer.observe(sec));
+  }
+  function initScrollProgress() {
+    const bar = document.getElementById('scrollProgress');
+    const onScroll = throttleRAF(() => {
+      const h = document.documentElement;
+      const max = h.scrollHeight - h.clientHeight;
+      const p = max > 0 ? (h.scrollTop / max) * 100 : 0;
+      bar.style.width = p + '%';
+    });
+    window.addEventListener('scroll', onScroll, { passive: true });
+  }
+
+  // =============== 回到顶部 ===============
+  function initBackToTop() {
+    const btn = document.getElementById('backToTop');
+    const toggle = throttleRAF(() => {
+      if (window.scrollY > 500) btn.classList.remove('hidden'); else btn.classList.add('hidden');
+    });
+    window.addEventListener('scroll', toggle, { passive: true });
+    btn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+  }
+
+  // =============== 进入视口动画 ===============
+  function initReveal() {
+    const els = document.querySelectorAll('.reveal');
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('revealed'); });
+    }, { threshold: 0.15 });
+    els.forEach(el => io.observe(el));
+  }
+
+  // =============== 裂变粒子系统（Canvas） ===============
+  class ReactorCoreAnimation {
+    constructor(canvas) {
+      this.canvas = canvas; this.ctx = canvas.getContext('2d');
+      this.neutrons = []; // {x,y,vx,vy,lifetime}
+      this.nuclei = [];  // 固定燃料点位
+      this.flashes = []; // 裂变闪光
+      this.maxNeutrons = 160;
+      this.core = { x: 0, y: 0, r: 0 };
+      this.running = true;
+      this.resize = this.resize.bind(this);
+      this.loop = this.loop.bind(this);
+      window.addEventListener('resize', debounce(this.resize, 200));
+      this.resize();
+      this.initScene();
+      requestAnimationFrame(this.loop);
+    }
+    resize() {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      this.canvas.width = this.canvas.clientWidth * dpr;
+      this.canvas.height = this.canvas.clientHeight * dpr;
+      this.ctx.setTransform(dpr,0,0,dpr,0,0);
+      this.core.x = this.canvas.clientWidth * 0.32;
+      this.core.y = this.canvas.clientHeight * 0.55;
+      this.core.r = Math.min(this.canvas.clientWidth, this.canvas.clientHeight) * 0.18;
+    }
+    initScene() {
+      // 生成燃料点
+      this.nuclei.length = 0;
+      const count = 36;
+      for (let i=0;i<count;i++){
+        const angle = (i / count) * Math.PI * 2;
+        const radius = this.core.r * (0.5 + 0.4 * Math.random());
+        const x = this.core.x + Math.cos(angle) * radius + (Math.random()-0.5)*10;
+        const y = this.core.y + Math.sin(angle) * radius + (Math.random()-0.5)*10;
+        this.nuclei.push({ x, y, r: 6 + Math.random()*3 });
+      }
+      // 初始中子
+      for (let i=0;i<22;i++) this.spawnNeutron();
+    }
+    spawnNeutron(x = this.core.x, y = this.core.y, speed = 1.2 + Math.random()*1.4) {
+      if (this.neutrons.length > this.maxNeutrons) return;
+      const angle = Math.random() * Math.PI * 2;
+      const vx = Math.cos(angle) * speed;
+      const vy = Math.sin(angle) * speed;
+      this.neutrons.push({ x, y, vx, vy, lifetime: 220 + Math.random()*120 });
+    }
+    fissionAt(x, y) {
+      // 闪光
+      this.flashes.push({ x, y, r: 2, alpha: 1 });
+      // 次级中子
+      const k = 2 + Math.floor(Math.random()*2); // 2-3 个
+      for (let i=0; i<k; i++) this.spawnNeutron(x,y, 1.6 + Math.random()*1.8);
+    }
+    update() {
+      // 中子运动与碰撞
+      for (let i=this.neutrons.length-1; i>=0; i--) {
+        const n = this.neutrons[i];
+        n.x += n.vx; n.y += n.vy; n.lifetime -= 1;
+        // 与边界微反弹
+        if (n.x < 40 || n.x > this.canvas.clientWidth-40) n.vx *= -1;
+        if (n.y < 40 || n.y > this.canvas.clientHeight-40) n.vy *= -1;
+        // 与燃料核碰撞
+        for (let j=0;j<this.nuclei.length;j++){
+          const p = this.nuclei[j];
+          const dx = n.x - p.x, dy = n.y - p.y; const d2 = dx*dx+dy*dy; const rr = (p.r+2)*(p.r+2);
+          if (d2 < rr) {
+            // 碰撞触发裂变
+            this.fissionAt(p.x, p.y);
+            // 改变方向
+            const ang = Math.atan2(dy, dx) + (Math.random()-0.5);
+            const sp = Math.hypot(n.vx, n.vy);
+            n.vx = Math.cos(ang) * sp; n.vy = Math.sin(ang) * sp;
+          }
+        }
+        if (n.lifetime <= 0) this.neutrons.splice(i,1);
+      }
+      // 闪光扩散
+      for (let i=this.flashes.length-1;i>=0;i--){
+        const f = this.flashes[i]; f.r += 1.6; f.alpha *= 0.92; if (f.alpha < 0.05) this.flashes.splice(i,1);
+      }
+      // 补充中子
+      if (this.neutrons.length < 30) this.spawnNeutron();
+    }
+    draw() {
+      const ctx = this.ctx; const w = this.canvas.clientWidth; const h = this.canvas.clientHeight;
+      ctx.clearRect(0,0,w,h);
+      // 核心辉光
+      const grd = ctx.createRadialGradient(this.core.x, this.core.y, 10, this.core.x, this.core.y, this.core.r*1.2);
+      grd.addColorStop(0, 'rgba(56, 189, 248, 0.15)');
+      grd.addColorStop(1, 'rgba(2, 6, 23, 0)');
+      ctx.fillStyle = grd; ctx.beginPath(); ctx.arc(this.core.x, this.core.y, this.core.r*1.4, 0, Math.PI*2); ctx.fill();
+
+      // 燃料点
+      for (const p of this.nuclei) {
+        ctx.fillStyle = 'rgba(14, 165, 233, 0.25)';
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2); ctx.fill();
+      }
+      // 中子
+      ctx.fillStyle = '#7dd3fc';
+      for (const n of this.neutrons) { ctx.beginPath(); ctx.arc(n.x, n.y, 1.8, 0, Math.PI*2); ctx.fill(); }
+      // 闪光
+      for (const f of this.flashes) {
+        ctx.strokeStyle = `rgba(250, 204, 21, ${f.alpha})`;
+        ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(f.x, f.y, f.r, 0, Math.PI*2); ctx.stroke();
+      }
+    }
+    loop() { if (!this.running) return; this.update(); this.draw(); requestAnimationFrame(this.loop); }
+  }
+
+  // =============== 冷却剂流体动画（Canvas） ===============
+  class CoolantFlowAnimation {
+    constructor(canvas) {
+      this.canvas = canvas; this.ctx = canvas.getContext('2d');
+      this.particles = [];
+      this.maxParticles = 220;
+      this.running = true;
+      this.time = 0;
+      this.resize = this.resize.bind(this);
+      this.loop = this.loop.bind(this);
+      window.addEventListener('resize', debounce(this.resize, 200));
+      this.resize();
+      this.init();
+      requestAnimationFrame(this.loop);
+    }
+    resize() {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      this.canvas.width = this.canvas.clientWidth * dpr;
+      this.canvas.height = this.canvas.clientHeight * dpr;
+      this.ctx.setTransform(dpr,0,0,dpr,0,0);
+    }
+    init() {
+      this.particles.length = 0;
+      for (let i=0;i<this.maxParticles;i++) this.spawn();
+    }
+    spawn() {
+      const w = this.canvas.clientWidth; const h = this.canvas.clientHeight;
+      const x = Math.random()*w*0.9 + w*0.05;
+      const y = h + Math.random()*h*0.2;
+      const speed = 0.6 + Math.random()*0.8;
+      this.particles.push({ x, y, speed, phase: Math.random()*Math.PI*2, life: Math.random()*400 });
+    }
+    update() {
+      const w = this.canvas.clientWidth; const h = this.canvas.clientHeight;
+      this.time += 0.01;
+      for (let i=this.particles.length-1;i>=0;i--){
+        const p = this.particles[i];
+        p.phase += 0.03; // 横向摆动
+        const sway = Math.sin(p.phase) * 10;
+        p.x += sway * 0.06;
+        p.y -= p.speed;
+        p.life -= 1;
+        if (p.y < -20 || p.life <= 0) { this.particles.splice(i,1); this.spawn(); }
+      }
+    }
+    draw() {
+      const ctx = this.ctx; const w = this.canvas.clientWidth; const h = this.canvas.clientHeight;
+      ctx.clearRect(0,0,w,h);
+      // 蒸汽/冷却剂轨迹
+      for (const p of this.particles) {
+        const alpha = 0.08;
+        const grad = ctx.createLinearGradient(p.x, p.y, p.x, p.y-24);
+        grad.addColorStop(0, `rgba(56, 189, 248, ${alpha})`);
+        grad.addColorStop(1, `rgba(250, 204, 21, ${alpha*0.7})`);
+        ctx.strokeStyle = grad;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y);
+        ctx.quadraticCurveTo(p.x + Math.sin(p.phase)*8, p.y - 12, p.x, p.y - 24);
+        ctx.stroke();
+      }
+    }
+    loop() { if (!this.running) return; this.update(); this.draw(); requestAnimationFrame(this.loop); }
+  }
+
+  // =============== FPS 监控 ===============
+  function initFPSMeter() {
+    const fpsEl = document.getElementById('fps');
+    let last = performance.now(); let frames = 0; let lastFpsUpdate = last;
+    function tick(now) {
+      frames++;
+      if (now - lastFpsUpdate >= 500) {
+        const fps = Math.round(frames * 1000 / (now - lastFpsUpdate));
+        fpsEl.textContent = fps.toString();
+        frames = 0; lastFpsUpdate = now;
+      }
+      requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  }
+
+  // =============== 图表：辐射剂量对比（对数） ===============
+  let doseChart;
+  function initDoseChart() {
+    const ctx = document.getElementById('doseChart').getContext('2d');
+    const labels = ['香蕉（1根）','胸透','胸部CT','年均本底','机组工作人员年限值','福岛疏散区峰值','切尔诺贝利早期响应'];
+    const data = [0.1, 100, 10000, 3000, 20000, 100000, 1000000]; // μSv
+    doseChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{
+          label: '剂量（μSv）', data,
+          backgroundColor: 'rgba(56, 189, 248, 0.6)', borderColor: '#38bdf8', borderWidth: 1
+        }]
+      },
+      options: {
+        animation: { duration: 900, easing: 'easeOutQuart' },
+        scales: {
+          y: {
+            type: 'logarithmic',
+            ticks: { color: '#cbd5e1', callback: (v) => `${v}` },
+            grid: { color: 'rgba(148,163,184,0.15)' }
+          },
+          x: { ticks: { color: '#cbd5e1' }, grid: { display: false } }
+        },
+        plugins: { legend: { labels: { color: '#e5e7eb' } } }
+      }
+    });
+  }
+
+  // =============== 衰变图表 ===============
+  let decayChart;
+  function plotDecayCurve(halfLifeYears, unit) {
+    const ctx = document.getElementById('decayChart').getContext('2d');
+    const N0 = parseFloat(document.getElementById('n0').value || '0');
+    const tVal = parseFloat(document.getElementById('timeValue').value || '0');
+    const tUnit = unit || document.getElementById('timeUnit').value;
+    const convertToYears = (t, u) => u==='y'? t : (u==='d'? t/365 : t/ (24*365));
+    const T = halfLifeYears;
+    const pts = 40;
+    const maxT = convertToYears(tVal, tUnit) || 1;
+    const xs = []; const ys = [];
+    for (let i=0;i<=pts;i++){
+      const ty = (i/pts) * maxT;
+      const N = N0 * Math.pow(0.5, ty / T);
+      xs.push((ty).toFixed(2)); ys.push(N);
+    }
+    if (decayChart) decayChart.destroy();
+    decayChart = new Chart(ctx, {
+      type: 'line',
+      data: { labels: xs, datasets: [{ label: 'N(t)', data: ys, borderColor: '#fbbf24', tension: 0.2, fill: false }] },
+      options: { scales: { x: { title: { display: true, text: '时间（年）', color: '#cbd5e1' }, ticks: { color: '#cbd5e1' } }, y: { ticks: { color: '#cbd5e1' }, grid: { color: 'rgba(148,163,184,0.15)' } } }, plugins: { legend: { labels: { color: '#e5e7eb' } } }, animation: { duration: 600 } }
+    });
+  }
+
+  // =============== 工具：计算逻辑 ===============
+  function initDoseCalculator() {
+    const wR = { gamma: 1, beta: 1, alpha: 20, neutron: 10 };
+    const rateEl = document.getElementById('doseRate');
+    const hoursEl = document.getElementById('hours');
+    const typeEl = document.getElementById('radType');
+    const massEl = document.getElementById('bodyMass');
+    const eqEl = document.getElementById('equivalentSv');
+    const abEl = document.getElementById('absorbedGy');
+    const errEl = document.getElementById('doseError');
+    document.getElementById('calcDoseBtn').addEventListener('click', () => {
+      errEl.textContent = '';
+      const r = parseFloat(rateEl.value || '0');
+      const h = parseFloat(hoursEl.value || '0');
+      if (r < 0 || h < 0) { errEl.textContent = '请输入非负数值'; return; }
+      const equivSv = (r * h) / 1e6; // μSv/h * h -> μSv -> Sv
+      const wr = wR[typeEl.value];
+      // 吸收剂量近似：对于γ/β，1 Sv ≈ 1 Gy；α/中子：1 Gy ≈ wR Sv => Gy ≈ Sv / wR
+      const absorbedGy = typeEl.value === 'gamma' || typeEl.value === 'beta' ? equivSv : (equivSv / wr);
+      eqEl.textContent = equivSv.toFixed(6);
+      // 可选：按体重粗略估计全身平均吸收，若输入体重，则显示同值（演示性质）
+      const m = parseFloat(massEl.value || '0');
+      abEl.textContent = absorbedGy.toFixed(6);
+    });
+  }
+
+  function initEnrichmentCalculators() {
+    const tabs = document.querySelectorAll('[data-enrich-tab]');
+    const views = { gamma: document.getElementById('enrich-gamma'), ms: document.getElementById('enrich-ms'), icp: document.getElementById('enrich-icp') };
+    tabs.forEach(btn => btn.addEventListener('click', () => {
+      tabs.forEach(b => b.classList.remove('bg-sky-700')); tabs.forEach(b => b.classList.add('bg-slate-700'));
+      btn.classList.add('bg-sky-700'); btn.classList.remove('bg-slate-700');
+      Object.values(views).forEach(v => v.classList.add('hidden'));
+      const key = btn.dataset.enrichTab; views[key].classList.remove('hidden');
+    }));
+    document.getElementById('calcGammaEnrich').addEventListener('click', () => {
+      const R = parseFloat(document.getElementById('gammaR').value || '0');
+      const a = parseFloat(document.getElementById('gammaA').value || '0');
+      const b = parseFloat(document.getElementById('gammaB').value || '0');
+      const E = clamp(a * R + b, 0, 100);
+      document.getElementById('gammaResult').textContent = E.toFixed(3);
+    });
+    const calcAB = (idA, idB, outId) => {
+      const A = parseFloat(document.getElementById(idA).value || '0');
+      const B = parseFloat(document.getElementById(idB).value || '0');
+      const sum = A + B; const E = sum > 0 ? (A / sum) * 100 : 0;
+      document.getElementById(outId).textContent = E.toFixed(5);
+    };
+    document.getElementById('calcMsEnrich').addEventListener('click', () => calcAB('msU235','msU238','msResult'));
+    document.getElementById('calcIcpEnrich').addEventListener('click', () => calcAB('icpU235','icpU238','icpResult'));
+  }
+
+  function initDecayTool() {
+    const halfLives = { 'U-235': 7.04e8, 'U-238': 4.468e9, 'Pu-239': 24100, 'I-131': 8.02/365, 'Cs-137': 30.17 }; // 年
+    const convertToYears = (t, u) => u==='y'? t : (u==='d'? t/365 : t/ (24*365));
+    document.getElementById('calcDecay').addEventListener('click', () => {
+      const nuclide = document.getElementById('nuclide').value;
+      const N0 = parseFloat(document.getElementById('n0').value || '0');
+      const t = parseFloat(document.getElementById('timeValue').value || '0');
+      const u = document.getElementById('timeUnit').value;
+      const T = halfLives[nuclide];
+      const ty = convertToYears(t, u);
+      const Nt = N0 * Math.pow(0.5, ty / T);
+      document.getElementById('nt').textContent = Nt.toFixed(6);
+    });
+    document.getElementById('plotDecay').addEventListener('click', () => {
+      const nuclide = document.getElementById('nuclide').value;
+      plotDecayCurve(halfLives[nuclide]);
+    });
+  }
+
+  function initRiskTable() {
+    const risks = [
+      { name: '反应堆失控', id: 'runaway' },
+      { name: '冷却剂丧失（LOCA）', id: 'loca' },
+      { name: '放射性泄漏', id: 'release' },
+    ];
+    const body = document.getElementById('riskBody');
+    risks.forEach(r => {
+      const tr = document.createElement('tr'); tr.className = 'border-t border-slate-700';
+      tr.innerHTML = `
+        <td class="p-2">${r.name}</td>
+        <td class="p-2"><select data-prob="${r.id}" class="glass p-1 rounded"><option>1</option><option>2</option><option>3</option><option>4</option><option selected>5</option></select></td>
+        <td class="p-2"><select data-sev="${r.id}" class="glass p-1 rounded"><option>1</option><option>2</option><option>3</option><option selected>4</option><option>5</option></select></td>
+        <td class="p-2"><span data-risk="${r.id}" class="px-2 py-0.5 rounded bg-slate-700">-</span></td>
+      `;
+      body.appendChild(tr);
+    });
+    function update() {
+      let sum = 0;
+      risks.forEach(r => {
+        const p = parseInt(document.querySelector(`[data-prob="${r.id}"]`).value,10);
+        const s = parseInt(document.querySelector(`[data-sev="${r.id}"]`).value,10);
+        const val = p * s; sum += val;
+        const chip = document.querySelector(`[data-risk="${r.id}"]`);
+        chip.textContent = val;
+        chip.style.backgroundColor = val >= 20 ? 'rgba(248, 113, 113, 0.4)' : (val >= 12 ? 'rgba(251, 191, 36, 0.35)' : 'rgba(34, 197, 94, 0.35)');
+      });
+      document.getElementById('totalRisk').textContent = sum.toString();
+    }
+    body.addEventListener('change', update);
+    update();
+  }
+
+  // =============== 动画管理器 ===============
+  class AnimationManager {
+    constructor() {
+      this.instances = [];
+      this.active = true;
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden) this.pause(); else this.resume();
+      });
+      window.addEventListener('blur', () => this.pause());
+      window.addEventListener('focus', () => this.resume());
+    }
+    register(instance) { this.instances.push(instance); }
+    pause() { this.active = false; this.instances.forEach(i => i.running = false); }
+    resume() {
+      if (this.active) return;
+      this.active = true;
+      this.instances.forEach(i => { if (!i.running) { i.running = true; requestAnimationFrame(i.loop); } });
+    }
+  }
+
+  // =============== 初始化 ===============
+  window.addEventListener('DOMContentLoaded', () => {
+    initParallax();
+    initScrollSpy();
+    initScrollProgress();
+    initBackToTop();
+    initReveal();
+
+    const manager = new AnimationManager();
+    const coolant = new CoolantFlowAnimation(document.getElementById('coolantCanvas'));
+    const reactor = new ReactorCoreAnimation(document.getElementById('reactorCanvas'));
+    manager.register(coolant);
+    manager.register(reactor);
+
+    initFPSMeter();
+    initDoseChart();
+    initDoseCalculator();
+    initEnrichmentCalculators();
+    initDecayTool();
+    initRiskTable();
+
+    // 微交互光标坐标（按钮涟漪）
+    document.querySelectorAll('.btn').forEach(btn => {
+      btn.addEventListener('mousemove', (e) => {
+        const rect = btn.getBoundingClientRect();
+        btn.style.setProperty('--x', `${e.clientX - rect.left}px`);
+        btn.style.setProperty('--y', `${e.clientY - rect.top}px`);
+      });
+    });
+  });
+  </script>
+</body>
+</html>
