@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>核工程技术科普网站</title>
+    
+    <!-- CDN Dependencies -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.min.js"></script>
+    
+    <style>
+        /* Custom CSS */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        
+        /* Glass Effect */
+        .glass {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            box-shadow: 0 25px 45px rgba(0, 0, 0, 0.1);
+        }
+        
+        /* Animated Background */
+        .animated-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background: linear-gradient(-45deg, #667eea, #764ba2, #f093fb, #f5576c);
+            background-size: 400% 400%;
+            animation: gradientShift 15s ease infinite;
+        }
+        
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        
+        /* Particle Canvas */
+        #particleCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            pointer-events: none;
+        }
+        
+        /* Navigation */
+        .nav-item {
+            position: relative;
+            cursor: pointer;
+            padding: 12px 24px;
+            border-radius: 12px;
+            transition: all 0.3s ease;
+            color: white;
+        }
+        
+        .nav-item:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+        
+        .nav-item.active {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        
+        /* Page Sections */
+        .page-section {
+            display: none;
+            min-height: 100vh;
+            padding: 2rem;
+            opacity: 0;
+            transform: translateY(50px);
+            transition: all 0.6s ease;
+        }
+        
+        .page-section.active {
+            display: block;
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        /* Card Effects */
+        .feature-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            padding: 2rem;
+            transition: all 0.4s ease;
+            transform-style: preserve-3d;
+            cursor: pointer;
+        }
+        
+        .feature-card:hover {
+            transform: rotateY(10deg) translateY(-10px);
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.2);
+            background: rgba(255, 255, 255, 0.15);
+        }
+        
+        /* Reactor Animation */
+        .reactor-core {
+            width: 200px;
+            height: 200px;
+            margin: 2rem auto;
+            position: relative;
+            border-radius: 50%;
+            background: radial-gradient(circle, #ffd700, #ff6b35);
+            animation: pulse 2s ease-in-out infinite;
+            box-shadow: 0 0 50px rgba(255, 215, 0, 0.5);
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); box-shadow: 0 0 50px rgba(255, 215, 0, 0.5); }
+            50% { transform: scale(1.1); box-shadow: 0 0 80px rgba(255, 215, 0, 0.8); }
+        }
+        
+        .neutron {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            background: #00ff88;
+            border-radius: 50%;
+            animation: neutronFly 3s linear infinite;
+            box-shadow: 0 0 10px #00ff88;
+        }
+        
+        @keyframes neutronFly {
+            0% { transform: translate(0, 0) scale(0); opacity: 0; }
+            10% { opacity: 1; transform: scale(1); }
+            90% { opacity: 1; }
+            100% { transform: translate(300px, 200px) scale(0); opacity: 0; }
+        }
+        
+        /* Utility Classes */
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .page-section {
+                padding: 1rem;
+            }
+            
+            .feature-card {
+                padding: 1.5rem;
+            }
+            
+            .reactor-core {
+                width: 150px;
+                height: 150px;
+            }
+        }
+        
+        /* Scroll Indicator */
+        .scroll-indicator {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 0%;
+            height: 4px;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            z-index: 1000;
+            transition: width 0.3s ease;
+        }
+        
+        /* Back to Top */
+        .back-to-top {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 50px;
+            height: 50px;
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            opacity: 0;
+            transform: translateY(100px);
+            z-index: 1000;
+        }
+        
+        .back-to-top.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        .back-to-top:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-5px);
+        }
+    </style>
+</head>
+<body>
+    <!-- Animated Background -->
+    <div class="animated-bg"></div>
+    
+    <!-- Particle Canvas -->
+    <canvas id="particleCanvas"></canvas>
+    
+    <!-- Scroll Indicator -->
+    <div class="scroll-indicator" id="scrollIndicator"></div>
+    
+    <!-- Navigation -->
+    <nav class="fixed top-0 left-0 right-0 z-50 p-4">
+        <div class="container mx-auto">
+            <div class="glass p-4 rounded-2xl">
+                <div class="flex flex-wrap justify-center gap-4">
+                    <div class="nav-item active" data-page="home">
+                        <i class="fas fa-home mr-2"></i>首页
+                    </div>
+                    <div class="nav-item" data-page="reactor-types">
+                        <i class="fas fa-industry mr-2"></i>堆型科普
+                    </div>
+                    <div class="nav-item" data-page="technical-principles">
+                        <i class="fas fa-cogs mr-2"></i>技术原理
+                    </div>
+                    <div class="nav-item" data-page="practical-tools">
+                        <i class="fas fa-calculator mr-2"></i>实用工具
+                    </div>
+                    <div class="nav-item" data-page="nuclear-safety">
+                        <i class="fas fa-shield-alt mr-2"></i>核安全
+                    </div>
+                    <div class="nav-item" data-page="faq">
+                        <i class="fas fa-question-circle mr-2"></i>常见问题
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+    
+    <!-- Main Content -->
+    <main class="pt-32">
+        <!-- Home Page -->
+        <section id="home" class="page-section active">
+            <div class="container mx-auto">
+                <div class="text-center mb-12">
+                    <h1 class="text-6xl font-bold text-white mb-6">
+                        核工程技术科普
+                    </h1>
+                    <p class="text-2xl text-white/80 mb-8">
+                        探索核能的奥秘，了解清洁能源的未来
+                    </p>
+                    
+                    <!-- Reactor Core Animation -->
+                    <div class="reactor-core">
+                        <div class="neutron" style="animation-delay: 0s;"></div>
+                        <div class="neutron" style="animation-delay: 1s;"></div>
+                        <div class="neutron" style="animation-delay: 2s;"></div>
+                    </div>
+                </div>
+                
+                <!-- Feature Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mt-16">
+                    <div class="feature-card">
+                        <div class="text-center">
+                            <i class="fas fa-atom text-4xl text-blue-300 mb-4"></i>
+                            <h3 class="text-2xl font-semibold text-white mb-4">清洁能源</h3>
+                            <p class="text-white/80">
+                                核能是最清洁的大规模发电方式之一，几乎不产生温室气体排放。
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <div class="text-center">
+                            <i class="fas fa-shield-alt text-4xl text-green-300 mb-4"></i>
+                            <h3 class="text-2xl font-semibold text-white mb-4">安全可靠</h3>
+                            <p class="text-white/80">
+                                现代核电站采用多重安全系统，确保运行安全和环境保护。
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <div class="text-center">
+                            <i class="fas fa-bolt text-4xl text-yellow-300 mb-4"></i>
+                            <h3 class="text-2xl font-semibold text-white mb-4">高效发电</h3>
+                            <p class="text-white/80">
+                                核能具有极高的能量密度，一颗铀燃料丸相当于一吨煤的能量。
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <div class="text-center">
+                            <i class="fas fa-recycle text-4xl text-purple-300 mb-4"></i>
+                            <h3 class="text-2xl font-semibold text-white mb-4">可持续发展</h3>
+                            <p class="text-white/80">
+                                核燃料可以回收利用，第四代反应堆将大幅提高燃料利用率。
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <div class="text-center">
+                            <i class="fas fa-chart-line text-4xl text-red-300 mb-4"></i>
+                            <h3 class="text-2xl font-semibold text-white mb-4">经济效益</h3>
+                            <p class="text-white/80">
+                                核电具有稳定的发电成本和长期的经济效益。
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <div class="text-center">
+                            <i class="fas fa-globe text-4xl text-cyan-300 mb-4"></i>
+                            <h3 class="text-2xl font-semibold text-white mb-4">全球发展</h3>
+                            <p class="text-white/80">
+                                全球已有30多个国家运行着450多座核电机组。
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Reactor Types Page -->
+        <section id="reactor-types" class="page-section">
+            <div class="container mx-auto">
+                <h2 class="text-5xl font-bold text-white text-center mb-12">反应堆堆型科普</h2>
+                
+                <!-- Commercial Reactors -->
+                <div class="mb-16">
+                    <h3 class="text-3xl font-semibold text-white mb-8">
+                        <i class="fas fa-industry mr-3"></i>商用堆型
+                    </h3>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div class="feature-card">
+                            <h4 class="text-2xl font-semibold text-white mb-4">压水堆 (PWR)</h4>
+                            <p class="text-white/80 mb-4">
+                                压水堆是目前世界上应用最广泛的反应堆类型，约占全球核电机组的65%。
+                            </p>
+                            <ul class="text-white/70 space-y-2">
+                                <li>• 使用轻水作为慢化剂和冷却剂</li>
+                                <li>• 一回路水保持高压，防止沸腾</li>
+                                <li>• 二回路产生蒸汽驱动汽轮机</li>
+                                <li>• 安全性能优良，技术成熟</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="feature-card">
+                            <h4 class="text-2xl font-semibold text-white mb-4">沸水堆 (BWR)</h4>
+                            <p class="text-white/80 mb-4">
+                                沸水堆允许冷却剂在反应堆内沸腾，产生的蒸汽直接驱动汽轮机。
+                            </p>
+                            <ul class="text-white/70 space-y-2">
+                                <li>• 简化的系统设计</li>
+                                <li>• 只有一个冷却回路</li>
+                                <li>• 较高的热效率</li>
+                                <li>• 自然循环冷却</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="feature-card">
+                            <h4 class="text-2xl font-semibold text-white mb-4">重水堆 (HWR)</h4>
+                            <p class="text-white/80 mb-4">
+                                重水堆使用重水作为慢化剂，可以使用天然铀作为燃料。
+                            </p>
+                            <ul class="text-white/70 space-y-2">
+                                <li>• 使用天然铀燃料</li>
+                                <li>• 在线换料能力</li>
+                                <li>• 优异的中子经济性</li>
+                                <li>• 适合铀资源丰富的国家</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="feature-card">
+                            <h4 class="text-2xl font-semibold text-white mb-4">石墨气冷堆 (GCR)</h4>
+                            <p class="text-white/80 mb-4">
+                                使用石墨作为慢化剂，二氧化碳作为冷却剂的反应堆类型。
+                            </p>
+                            <ul class="text-white/70 space-y-2">
+                                <li>• 高温运行能力</li>
+                                <li>• 良好的安全特性</li>
+                                <li>• 可在线换料</li>
+                                <li>• 主要用于英国</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Advanced Reactors -->
+                <div>
+                    <h3 class="text-3xl font-semibold text-white mb-8">
+                        <i class="fas fa-rocket mr-3"></i>先进堆型
+                    </h3>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                        <div class="feature-card">
+                            <h4 class="text-xl font-semibold text-white mb-3">高温气冷堆 (HTGR)</h4>
+                            <p class="text-white/80 text-sm mb-3">
+                                使用氦气冷却，石墨慢化，运行温度可达950°C。
+                            </p>
+                            <ul class="text-white/70 text-sm space-y-1">
+                                <li>• 固有安全性</li>
+                                <li>• 高热效率</li>
+                                <li>• 制氢能力</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="feature-card">
+                            <h4 class="text-xl font-semibold text-white mb-3">钠冷快堆 (SFR)</h4>
+                            <p class="text-white/80 text-sm mb-3">
+                                使用液态钠冷却的快中子反应堆，具有增殖能力。
+                            </p>
+                            <ul class="text-white/70 text-sm space-y-1">
+                                <li>• 燃料增殖</li>
+                                <li>• 废料焚烧</li>
+                                <li>• 高燃耗</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="feature-card">
+                            <h4 class="text-xl font-semibold text-white mb-3">熔盐堆 (MSR)</h4>
+                            <p class="text-white/80 text-sm mb-3">
+                                燃料溶解在熔融盐中，具有独特的安全特性。
+                            </p>
+                            <ul class="text-white/70 text-sm space-y-1">
+                                <li>• 低压运行</li>
+                                <li>• 固有安全</li>
+                                <li>• 在线处理</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="feature-card">
+                            <h4 class="text-xl font-semibold text-white mb-3">超临界水冷堆 (SCWR)</h4>
+                            <p class="text-white/80 text-sm mb-3">
+                                使用超临界水冷却，简化系统设计。
+                            </p>
+                            <ul class="text-white/70 text-sm space-y-1">
+                                <li>• 高热效率</li>
+                                <li>• 简化系统</li>
+                                <li>• 经济性好</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="feature-card">
+                            <h4 class="text-xl font-semibold text-white mb-3">超高温气冷堆 (VHTR)</h4>
+                            <p class="text-white/80 text-sm mb-3">
+                                运行温度超过1000°C的高温气冷堆。
+                            </p>
+                            <ul class="text-white/70 text-sm space-y-1">
+                                <li>• 超高温运行</li>
+                                <li>• 高效制氢</li>
+                                <li>• 工艺热应用</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- More sections will continue... -->
+        
+    </main>
+    
+    <!-- Back to Top Button -->
+    <div class="back-to-top" id="backToTop">
+        <i class="fas fa-arrow-up"></i>
+    </div>
+    
+    <script>
+        // JavaScript will be added in the next step
+    </script>
+</body>
+</html>
